@@ -4,7 +4,7 @@ clear;
 theta = 0.1 * pi / 2;
 
 % Load image
-colorimage = imread('test1.jpg');  % Make sure this file is in your folder
+colorimage = imread('test1.jpg'); 
 
 % Convert to double precision and split RGB channels
 M = im2double(colorimage); 
