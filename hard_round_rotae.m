@@ -3,24 +3,24 @@ clear;
 % Set rotation angle (in radians)
 theta = 0.1 * pi / 2;
 
-% Load image
+% load image
 colorimage = imread('test1.jpg');  % Make sure this file is in your folder
 
-% Convert to double precision and split RGB channels
+% convert to double precision and split RGB channels
 M = im2double(colorimage); 
 MR = M(:,:,1); % Red
 MG = M(:,:,2); % Green
 MB = M(:,:,3); % Blue
 
-% Get image size
+% get image size
 rows = size(MR,1);  
 cols = size(MR,2);  
 
-% Define rotation matrix and its inverse
+% define rotation matrix and its inverse
 R = [cos(theta) -sin(theta); sin(theta) cos(theta)];
 Rinv = R^(-1);
 
-% Pad image to avoid cropping after rotation
+% pad image to avoid cropping after rotation
 padsize = 100;
 MR_pad = padarray(MR, [padsize, padsize], 0, 'both');
 MG_pad = padarray(MG, [padsize, padsize], 0, 'both');
@@ -30,12 +30,12 @@ MB_pad = padarray(MB, [padsize, padsize], 0, 'both');
 cx = cols_pad / 2;
 cy = rows_pad / 2;
 
-% Create new (blank) matrices for rotated image
+% create new (blank) matrices for rotated image
 MR_new = zeros(size(MR_pad));
 MG_new = zeros(size(MG_pad));
 MB_new = zeros(size(MB_pad));
 
-% Basic rotation using hard rounding (push method)
+% basic rotation using hard rounding (push method)
 for x = 1:cols_pad
     for y = 1:rows_pad
         % Shift origin to center
@@ -69,7 +69,7 @@ imshow(Mrotate);
 title('Rotated Image (Hard Rounding)');
 imwrite(Mrotate, 'RotatedImage.jpg');
 
-% Optional: Show original vs rotated side by side
+% Show original vs rotated side by side
 figure;
 subplot(1,2,1), imshow(colorimage), title('Original');
 subplot(1,2,2), imshow(Mrotate), title('Rotated');
