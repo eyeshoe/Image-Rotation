@@ -1,0 +1,76 @@
+clear;
+% round()
+% Set rotation angle (in radians)
+theta = 0.1 * pi / 2;
+
+% Load image
+colorimage = imread('test1.jpg');  % Make sure this file is in your folder
+
+% Convert to double precision and split RGB channels
+M = im2double(colorimage); 
+MR = M(:,:,1); % Red
+MG = M(:,:,2); % Green
+MB = M(:,:,3); % Blue
+
+% Get image size
+rows = size(MR,1);  
+cols = size(MR,2);  
+
+% Define rotation matrix and its inverse
+R = [cos(theta) -sin(theta); sin(theta) cos(theta)];
+Rinv = R^(-1);
+
+% Pad image to avoid cropping after rotation
+padsize = 100;
+MR_pad = padarray(MR, [padsize, padsize], 0, 'both');
+MG_pad = padarray(MG, [padsize, padsize], 0, 'both');
+MB_pad = padarray(MB, [padsize, padsize], 0, 'both');
+
+[rows_pad, cols_pad] = size(MR_pad);
+cx = cols_pad / 2;
+cy = rows_pad / 2;
+
+% Create new (blank) matrices for rotated image
+MR_new = zeros(size(MR_pad));
+MG_new = zeros(size(MG_pad));
+MB_new = zeros(size(MB_pad));
+
+% Basic rotation using hard rounding (push method)
+for x = 1:cols_pad
+    for y = 1:rows_pad
+        % Shift origin to center
+        x_shift = x - cx;
+        y_shift = y - cy;
+
+        % Apply rotation
+        coord_new = R * [x_shift; y_shift];
+
+        % Shift back
+        x_new = round(coord_new(1) + cx);
+        y_new = round(coord_new(2) + cy);
+
+        % Check if new location is within bounds
+        if x_new > 0 && x_new <= cols_pad && y_new > 0 && y_new <= rows_pad
+            MR_new(y_new, x_new) = MR_pad(y, x);
+            MG_new(y_new, x_new) = MG_pad(y, x);
+            MB_new(y_new, x_new) = MB_pad(y, x);
+        end
+    end
+end
+
+% Combine the rotated channels back into an image
+Mrotate(:,:,1) = MR_new;
+Mrotate(:,:,2) = MG_new;
+Mrotate(:,:,3) = MB_new;
+
+% Display and save the rotated image
+figure;
+imshow(Mrotate);
+title('Rotated Image (Hard Rounding)');
+imwrite(Mrotate, 'RotatedImage.jpg');
+
+% Optional: Show original vs rotated side by side
+figure;
+subplot(1,2,1), imshow(colorimage), title('Original');
+subplot(1,2,2), imshow(Mrotate), title('Rotated');
+
