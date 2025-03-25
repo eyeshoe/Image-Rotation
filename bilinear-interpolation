@@ -1,0 +1,143 @@
+%% DEFAULT ROTATION %%
+clear; clc; close all;
+% round()
+% Set rotation angle (in radians)
+theta = 0.1 * pi / 2;
+
+% load image
+colorimage = imread('test1.jpg');  
+
+% convert to double precision and split RGB channels
+M = im2double(colorimage); 
+MR = M(:,:,1); % Red
+MG = M(:,:,2); % Green
+MB = M(:,:,3); % Blue
+
+% get image size
+rows = size(MR,1);  
+cols = size(MR,2);  
+
+% define rotation matrix and its inverse
+R = [cos(theta) -sin(theta); sin(theta) cos(theta)];
+Rinv = R^(-1);
+
+% pad image to avoid cropping after rotation
+padsize = 100;
+MR_pad = padarray(MR, [padsize, padsize], 0, 'both');
+MG_pad = padarray(MG, [padsize, padsize], 0, 'both');
+MB_pad = padarray(MB, [padsize, padsize], 0, 'both');
+
+[rows_pad, cols_pad] = size(MR_pad);
+cx = cols_pad / 2;
+cy = rows_pad / 2;
+
+% create new (blank) matrices for rotated image
+MR_new = zeros(size(MR_pad));
+MG_new = zeros(size(MG_pad));
+MB_new = zeros(size(MB_pad));
+
+% basic rotation using hard rounding (push method)
+for x = 1:cols_pad
+    for y = 1:rows_pad
+        % Shift origin to center
+        x_shift = x - cx;
+        y_shift = y - cy;
+
+        % Apply rotation
+        coord_new = R * [x_shift; y_shift];
+
+        % Shift back
+        x_new = round(coord_new(1) + cx);
+        y_new = round(coord_new(2) + cy);
+
+        % Check if new location is within bounds
+        if x_new > 0 && x_new <= cols_pad && y_new > 0 && y_new <= rows_pad
+            MR_new(y_new, x_new) = MR_pad(y, x);
+            MG_new(y_new, x_new) = MG_pad(y, x);
+            MB_new(y_new, x_new) = MB_pad(y, x);
+        end
+    end
+end
+
+% Combine the rotated channels back into an image
+Mrotate(:,:,1) = MR_new;
+Mrotate(:,:,2) = MG_new;
+Mrotate(:,:,3) = MB_new;
+
+% Display and save the rotated image
+figure;
+imshow(Mrotate);
+title('Rotated Image (Hard Rounding, Push)');
+imwrite(Mrotate, 'RotatedImage.jpg');
+
+% Show original vs rotated side by side
+figure;
+subplot(1,3,1), imshow(colorimage), title('Original');
+subplot(1,3,2), imshow(Mrotate), title('Rotated (Hard Rounding, Push)');
+
+% UPGRADE: BILINEAR INTERPOLATION + PULL METHOD %
+% For each pixel in our resulting image, find the four nearest pixels in
+% the original image. Then, based on their distance to our "perfect"
+% location, weight them linearly to determine our value (for each channel).
+
+% create new (blank) matrices for rotated image
+MR_new = zeros(size(MR_pad));
+MG_new = zeros(size(MG_pad));
+MB_new = zeros(size(MB_pad));
+
+% Rotation using Bilinear Interpolation (pull method)
+for x = 1:cols_pad
+    % disp(x)
+    for y = 1:rows_pad
+        % Shift origin to center
+        x_new = x - cx;
+        y_new = y - cy;
+
+        % Given our coordinate in our new place, how can we determine what
+        % the original coordinate should have been?
+        %
+        % Using the rotation matrix, R * [x_shift; y_shift], we get the
+        % coordinate that an original pixel corresponds to. In our case we
+        % want to find the original pixel, given the coordinate.
+        %
+        % So, we can use the inverse of the rotation matrix. 
+        % CODE: 
+        coord_og = R \ [x_new; y_new];
+        % Shift back
+        x_og = coord_og(1) + cx;
+        y_og = coord_og(2) + cy;
+        % Then, we want to weight the nearest four pixels instead of simply
+        % taking the nearest using the round functions. We can do this by
+        % taking both ceil() and floor(), taking the area of the differences (will be <=1)
+        % and using the area of the opposite rectangle as our multiplier for each pixel
+        % CODE:
+        x1 = floor(x_og);
+        x2 = ceil(x_og);
+        y1 = floor(y_og);
+        y2 = ceil(y_og);
+        % Check if og location is within bounds
+        if y1 > 0 && y2 <= rows_pad && x1 > 0 && x2 <= cols_pad
+            A11 = (x2 - x_og)*(y2 - y_og);
+            A12 = (x2 - x_og)*(y_og - y1);
+            A21 = (x_og - x1)*(y2 - y_og);
+            A22 = (x_og - x1)*(y_og - y1);
+            % Note: Normally, we would divide by area. But since each pixel
+            % is exactly one unit apart, we can assume that the total area is 1.
+            MR_new(y, x) = A11 * MR_pad(y1,x1) + A12 * MR_pad(y2,x1) + A21 * MR_pad(y1,x2) + A22 * MR_pad(y2, x2);
+            MG_new(y, x) = A11 * MG_pad(y1,x1) + A12 * MG_pad(y2,x1) + A21 * MG_pad(y1,x2) + A22 * MG_pad(y2, x2);
+            MB_new(y, x) = A11 * MB_pad(y1,x1) + A12 * MB_pad(y2,x1) + A21 * MB_pad(y1,x2) + A22 * MB_pad(y2, x2);
+        end       
+    end
+end
+
+% Combine the rotated channels back into an image
+Mrotate(:,:,1) = MR_new;
+Mrotate(:,:,2) = MG_new;
+Mrotate(:,:,3) = MB_new;
+
+% Display and save the rotated image
+subplot(1,3,3), imshow(Mrotate), title('Rotated (Bilinear Interpolation, Pull)');
+figure;
+imshow(Mrotate);
+title('Rotated Image (Bilinear Interpolation, Pull)');
+imwrite(Mrotate, 'RotatedImage.jpg');
